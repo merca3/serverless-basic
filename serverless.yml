@@ -1,0 +1,107 @@
+plugins:
+  - serverless-plugin-typescript
+  - serverless-dynamodb
+  - serverless-offline
+app: serverless-basic
+service: serverless-basic
+useDotenv: true
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  stage: ${opt:stage, 'local'}
+  region: ${env:REGION}
+  memorySize: 256
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:DescribeTable
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      Resource: 'arn:aws:dynamodb:eu-central-1:*:*'
+  environment:
+    IS_OFFLINE: ${env.IS_OFFLINE}
+
+custom:
+  serverless-offline:
+    httpPort: 4000
+    lambdaPort: 4002
+  serverless-dynamodb:
+    stages:
+      - local
+    start:
+      docker: true
+      port: 8010
+      inMemory: false
+      heapInitial: 200m
+      heapMax: 1g
+      migrate: true
+      seed: true
+      convertEmptyValues: true
+    seed:
+      test:
+        sources:
+          - table: usersTable
+            rawsources: [./dynamodb-tables/usersTable-data.json]
+  tableNames:
+    usersTable: 'usersTable'
+
+functions:
+  hello-world:
+    handler: src/handlers/hello/hello.handler
+    description: 'offline example'
+    events:
+      - httpApi:
+          path: /${self:provider.stage}/hello
+          method: GET
+
+
+resources:
+  Resources:
+    usersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: usersTable
+        KeySchema:
+          - AttributeName: userId
+            KeyType: HASH
+        AttributeDefinitions:
+          - AttributeName: userId
+            AttributeType: S
+          - AttributeName: isActive
+            AttributeType: N
+          - AttributeName: firstName
+            AttributeType: S
+          - AttributeName: userName
+            AttributeType: S
+        ProvisionedThroughput:
+          ReadCapacityUnits: 3
+          WriteCapacityUnits: 3
+        GlobalSecondaryIndexes:
+          - IndexName: isActiveIndex
+            KeySchema:
+              - AttributeName: isActive
+                KeyType: HASH
+              - AttributeName: firstName
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+            ProvisionedThroughput:
+              ReadCapacityUnits: 3
+              WriteCapacityUnits: 3
+          - IndexName: userNameIndex
+            KeySchema:
+              - AttributeName: userName
+                KeyType: HASH
+              - AttributeName: firstName
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+            ProvisionedThroughput:
+              ReadCapacityUnits: 3
+              WriteCapacityUnits: 3
