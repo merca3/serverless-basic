@@ -13,8 +13,11 @@ Then run
 aws configure
 ```
 AWS Access Key ID: fake_key_id
+
 AWS Secret Access Key: fake_access_key
+
 Default region name: eu-west-1
+
 Default output format: json
 
 ### DynamoDb admin
